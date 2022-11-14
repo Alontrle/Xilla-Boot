@@ -15,6 +15,8 @@ public class XillaApplication extends ProgramManager {
         XillaApplication xillaApplication = new XillaApplication(applicationName);
         if(reflection)
             xillaApplication.start();
+
+        System.out.println("");
     }
 
     @Getter

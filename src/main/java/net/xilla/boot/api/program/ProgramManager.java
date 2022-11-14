@@ -51,7 +51,8 @@ public class ProgramManager {
             @Override
             public void run() {
                 manager.loadStorage();
-                manager.loadAll();
+                manager.initialLoad();
+                manager.startWorkers();
             }
         });
 

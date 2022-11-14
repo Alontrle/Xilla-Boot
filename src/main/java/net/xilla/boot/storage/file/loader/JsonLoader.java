@@ -159,7 +159,7 @@ public class JsonLoader extends ConcurrentHashMap<String, FileSection> implement
         }
         String json = builder.toString();
 
-        System.out.println("Attempting to read json " + json);
+//        System.out.println("Attempting to read json " + json);
         Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
 
         JsonObject jsonObject = null;

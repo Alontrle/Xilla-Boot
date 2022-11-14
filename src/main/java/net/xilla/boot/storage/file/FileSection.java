@@ -33,23 +33,32 @@ public class FileSection {
     @Setter
     private FileLoader fileLoader = null;
 
-    public FileSection(String key, JsonObject data) {
+    public FileSection(String key, JsonObject data, FileLoader loader) {
         this.key = key;
         this.data = data;
+        this.fileLoader = loader;
     }
 
     public FileSection() {}
 
     public JsonObject getData() {
         if(data == null) {
+            if(fileLoader == null) System.out.println("File loader is null!");
             try {
-                return fileLoader.loadData(this).getRawData();
+                FileSection loadedSection = fileLoader.loadData(this);
+                if(loadedSection.getRawData() == null) System.out.println("Loaded data is null!");
+
+                this.data = loadedSection.getRawData();
             } catch (IOException e) {
+                System.out.println("Failed to load data for file section " + key);
                 e.printStackTrace();
             }
-            return null;
         }
         return data;
+    }
+
+    public void clearData() {
+        data = null;
     }
 
     @Deprecated

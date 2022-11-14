@@ -6,10 +6,7 @@ import com.google.gson.JsonObject;
 import net.xilla.boot.storage.file.FileLoader;
 import net.xilla.boot.storage.file.FileSection;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /***
@@ -37,12 +34,18 @@ public class JsonFolderLoader extends ConcurrentHashMap<String, FileSection> imp
     @Override
     public void remove(String key) {
         super.remove(key);
+        File file = new File(folder + "/" + key + ".json");
+        if(file.exists()) file.delete();
     }
 
     // Writing to the file
 
     public void saveSections() throws FileException {
         for(FileSection section : values()) {
+            if(section.getRawData() == null) {
+//                System.out.println("FileSection " + section.getKey() + " has null data before being saved!");
+                continue;
+            }
             File file = new File(folder + "/" + section.getKey() + ".json");
             File tempFile = new File(folder + "/" + section.getKey() + ".json.temp");
             tempFile.delete();
@@ -70,7 +73,7 @@ public class JsonFolderLoader extends ConcurrentHashMap<String, FileSection> imp
         String json = gson.toJson(section);
 
         JsonObject jsonObject = gson.fromJson(json, JsonObject.class);
-        jsonObject.add("data", section.getData());
+        jsonObject.add("data", section.getRawData());
         writer.append(gson.toJson(jsonObject));
     }
 
@@ -115,6 +118,7 @@ public class JsonFolderLoader extends ConcurrentHashMap<String, FileSection> imp
                         section.setFileLoader(this);
                         section.setStart(start);
                         section.setEnd(index);
+                        section.clearData();
 
                         put(section);
 
@@ -134,27 +138,30 @@ public class JsonFolderLoader extends ConcurrentHashMap<String, FileSection> imp
     }
 
     public FileSection readSectionWithData(File file, int start, int end) throws IOException {
-        FileInputStream stream = new FileInputStream(file);
 
-        StringBuilder builder = new StringBuilder();
-
-        stream.skip(start);
-
-        for(int i = start; i <= end; i++) {
-
-            char character = (char)stream.read();
-
-            builder.append(character);
-        }
-        String json = builder.toString();
-
-        Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
-
-        JsonObject jsonObject = null;
+//        StringBuilder builder = new StringBuilder();
+//
+//        for(int i = 0; i < file.length(); i++) {
+//
+//            char character = (char)stream.read();
+//
+//            builder.append(character);
+//        }
+//        String json = builder.toString();
         try {
-            jsonObject = new GsonBuilder().setLenient().create().fromJson(json, JsonObject.class);
+            BufferedReader reader = new BufferedReader(new FileReader(file));
+            StringBuilder buffer = new StringBuilder();
+            String line = reader.readLine();
+            while (line != null) {
+                buffer.append(line);
+                line = reader.readLine();
+            }
 
-            FileSection section = gson.fromJson(json, FileSection.class);
+            Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
+
+            JsonObject jsonObject = new GsonBuilder().setLenient().create().fromJson(buffer.toString(), JsonObject.class);
+
+            FileSection section = gson.fromJson(jsonObject, FileSection.class);
             section.setFileLoader(this);
             section.setStart(start);
             section.setEnd(end);
@@ -163,7 +170,6 @@ public class JsonFolderLoader extends ConcurrentHashMap<String, FileSection> imp
             return section;
         } catch (Exception ex) {
             System.out.println("Failed to load object with starting position " + start);
-            System.out.println("Raw json string: " + json);
             ex.printStackTrace();
             return null;
         }

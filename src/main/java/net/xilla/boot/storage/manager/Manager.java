@@ -17,7 +17,11 @@ public class Manager<Value> implements Map<String, Value> {
 
     // Storage
 
+    @Getter
     private final ConcurrentHashMap<String, Value> loadedObjects = new ConcurrentHashMap<>();
+
+    @Getter
+    private final ConcurrentHashMap<String, Long> lastAccessed = new ConcurrentHashMap<>();
 
     private final List<ManagerCache<Value>> cacheList = new Vector<>();
 
@@ -29,9 +33,11 @@ public class Manager<Value> implements Map<String, Value> {
 
     // Settings
 
-    @Setter @Getter private boolean autoCleanup = true;
-    @Setter @Getter private boolean autoSave = true;
+    @Setter @Getter private boolean autoCleanup = false;
+    @Setter @Getter private boolean autoSave = false;
     @Setter @Getter private int cleanupTime = 60;
+
+    @Setter @Getter private int autoCleanupTime = 300;
     @Setter @Getter private int autoSaveTime = 60 * 5;
     @Setter @Getter private int loadingThreads = 1;
     @Setter @Getter private int savingThreads = 1;
@@ -63,6 +69,7 @@ public class Manager<Value> implements Map<String, Value> {
         saving = System.currentTimeMillis();
         loadToFileLoader();
         try {
+            System.out.println("Saving manager " + name);
             storage.saveSections();
         } catch (FileLoader.FileException e) {
             e.printStackTrace();
@@ -75,7 +82,7 @@ public class Manager<Value> implements Map<String, Value> {
         for(String key : loadedObjects.keySet()) {
             executor.execute(() -> {
                 Value obj = loadedObjects.get(key);
-                storage.put(key, new FileSection(key, ObjectProcessor.toJson(obj)));
+                storage.put(key, new FileSection(key, ObjectProcessor.toJson(obj), storage));
             });
         }
         executor.shutdown();
@@ -83,6 +90,59 @@ public class Manager<Value> implements Map<String, Value> {
             executor.awaitTermination(1, TimeUnit.DAYS);
         } catch (InterruptedException interruptedException) {
             interruptedException.printStackTrace();
+        }
+    }
+
+    public void startWorkers() {
+        if(autoSave) {
+            new Thread(() -> {
+                boolean started = false;
+                while (autoSave) {
+                    long start = System.currentTimeMillis();
+                    if(started) {
+                        System.out.println("Auto saving manager " + getName());
+                        save();
+                        started = true;
+                    }
+                    try {
+                        long time = (autoSaveTime * 1000L) - (System.currentTimeMillis() - start);
+                        if(time <= 0)
+                            System.out.println("Manager " + getName() + " is taking longer then the autosave period to save!");
+                        else
+                            Thread.sleep(time);
+                    } catch (InterruptedException ignored) {
+                    }
+                }
+            }).start();
+        }
+        if(autoCleanup) {
+            new Thread(() -> {
+                boolean started = false;
+                while (autoCleanup) {
+                    // Saving before cleaning up
+                    long start = System.currentTimeMillis();
+                    if(started) {
+                        System.out.println("Auto cleaning up manager " + getName());
+                        save();
+
+                        for (String key : loadedObjects.keySet()) {
+                            long time = lastAccessed.get(key);
+                            if (System.currentTimeMillis() - time > cleanupTime * 1000L) {
+                                unloadObject(key);
+                            }
+                        }
+                    }
+                    started = true;
+                    try {
+                        long time = (autoCleanupTime * 1000L) - (System.currentTimeMillis() - start);
+                        if(time <= 0)
+                            System.out.println("Manager " + getName() + " is taking longer then the cleanup period to cleanup!");
+                        else
+                            Thread.sleep(time);
+                    } catch (InterruptedException ignored) {
+                    }
+                }
+            }).start();
         }
     }
 
@@ -96,14 +156,39 @@ public class Manager<Value> implements Map<String, Value> {
     }
 
     public void loadSingle(String key) {
-        loadedObjects.put(key, loadObject(storage.get(key)));
+        if(key == null) {
+            throw new RuntimeException("FAILED TO LOAD OBJECT BECAUSE KEY IS NULL");
+        }
+        FileSection section = storage.get(key);
+        if(section == null) {
+            throw new RuntimeException("FAILED TO LOAD STORAGE FOR " + key);
+        }
+        Value obj = loadObject(section);
+        if(obj == null) {
+            throw new RuntimeException("FAILED TO LOAD DATA FOR " + key);
+        }
+        loadedObjects.put(key, obj);
+    }
+
+    public void initialLoad() {
+        if(autoCleanup) return;
+        ExecutorService executor = Executors.newFixedThreadPool(loadingThreads);
+        storage.forEach((key, section) ->
+            executor.execute(() -> {
+                    loadedObjects.put(key, loadObject(section));
+                    lastAccessed.put(key, System.currentTimeMillis());
+                }
+            )
+        );
     }
 
     public void loadAll() {
         ExecutorService executor = Executors.newFixedThreadPool(loadingThreads);
         storage.forEach((key, section) ->
-            executor.execute(() ->
-                    loadedObjects.put(key, loadObject(section))
+            executor.execute(() -> {
+                        loadedObjects.put(key, loadObject(section));
+                        lastAccessed.put(key, System.currentTimeMillis());
+                    }
             )
         );
     }
@@ -112,12 +197,20 @@ public class Manager<Value> implements Map<String, Value> {
         try {
             return ObjectProcessor.toObject(section.getData(), clazz);
         } catch (ProcessorException e) {
-            System.out.println("Failed to load object " + section);
+            System.out.println("Failed to load object " + section.getKey());
             e.printStackTrace();
             System.out.println("Reason Below");
             e.getCause().printStackTrace();
+            System.out.println("JSON Below");
+            System.out.println(section.getData());
             return null;
         }
+    }
+
+    public void unloadObject(String key) {
+        loadedObjects.remove(key);
+        lastAccessed.remove(key);
+        storage.get(key).clearData();
     }
 
     // Map Functions
@@ -147,21 +240,26 @@ public class Manager<Value> implements Map<String, Value> {
         if(!loadedObjects.containsKey(key) && storage.containsKey(key)) {
             loadedObjects.put((String) key, loadObject(storage.get(key)));
         }
+        lastAccessed.put(key.toString(), System.currentTimeMillis());
         return loadedObjects.get(key);
     }
 
     @Override
     public Value put(String key, Value value) {
+        lastAccessed.put(key, System.currentTimeMillis());
         return loadedObjects.put(key, value);
     }
 
     public Value put(Value value) {
-        return put(ObjectProcessor.getName(value), value);
+        String key = ObjectProcessor.getName(value);
+        lastAccessed.put(key, System.currentTimeMillis());
+        return put(key, value);
     }
 
     @Override
     public Value remove(Object key) {
         storage.remove(key);
+        lastAccessed.remove(key);
         return loadedObjects.remove(key);
     }
 
@@ -173,6 +271,7 @@ public class Manager<Value> implements Map<String, Value> {
     @Override
     public void clear() {
         loadedObjects.clear();
+        lastAccessed.clear();
         storage.clear();
         try {
             storage.saveSections();

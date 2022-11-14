@@ -5,7 +5,7 @@
     <property name="java.runtime.name" value="OpenJDK Runtime Environment"/>
     <property name="java.vm.version" value="11.0.16+8-LTS"/>
     <property name="sun.boot.library.path" value="C:\Program Files\Microsoft\jdk-11.0.16.8-hotspot\bin"/>
-    <property name="maven.multiModuleProjectDirectory" value="C:\Users\tobia\Documents\projects\XillaBoot"/>
+    <property name="maven.multiModuleProjectDirectory" value="C:\Users\tobia\Documents\projects\Xilla-Boot"/>
     <property name="java.vm.vendor" value="Microsoft"/>
     <property name="java.vendor.url" value="https://www.microsoft.com"/>
     <property name="guice.disable.misplaced.annotation.check" value="true"/>
@@ -16,7 +16,7 @@
     <property name="user.country" value="US"/>
     <property name="sun.java.launcher" value="SUN_STANDARD"/>
     <property name="java.vm.specification.name" value="Java Virtual Machine Specification"/>
-    <property name="user.dir" value="C:\Users\tobia\Documents\projects\XillaBoot"/>
+    <property name="user.dir" value="C:\Users\tobia\Documents\projects\Xilla-Boot"/>
     <property name="java.vm.compressedOopsMode" value="Zero based"/>
     <property name="java.runtime.version" value="11.0.16+8-LTS"/>
     <property name="java.awt.graphicsenv" value="sun.awt.Win32GraphicsEnvironment"/>
@@ -30,7 +30,7 @@
     <property name="maven.ext.class.path" value="C:\Users\tobia\AppData\Local\JetBrains\IntelliJ IDEA Community Edition 2022.2\plugins\maven\lib\maven-event-listener.jar"/>
     <property name="classworlds.conf" value="C:\Users\tobia\AppData\Local\JetBrains\IntelliJ IDEA Community Edition 2022.2\plugins\maven\lib\maven3\bin\m2.conf"/>
     <property name="sun.jnu.encoding" value="Cp1252"/>
-    <property name="java.library.path" value="C:\Program Files\Microsoft\jdk-11.0.16.8-hotspot\bin;C:\Windows\Sun\Java\bin;C:\Windows\system32;C:\Windows;C:\Program Files\Microsoft\jdk-11.0.16.8-hotspot\bin;C:\Program Files\Eclipse Adoptium\jre-8.0.342.7-hotspot\bin;C:\Program Files\Eclipse Adoptium\jre-17.0.4.8-hotspot\bin;C:\Program Files\Eclipse Adoptium\jre-11.0.16.8-hotspot\bin;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;C:\Program Files\PuTTY\;C:\Program Files\Microsoft VS Code\bin;C:\Program Files\dotnet\;C:\Users\tobia\AppData\Local\Microsoft\WindowsApps;;."/>
+    <property name="java.library.path" value="C:\Program Files\Microsoft\jdk-11.0.16.8-hotspot\bin;C:\Windows\Sun\Java\bin;C:\Windows\system32;C:\Windows;C:\Program Files\Common Files\Oracle\Java\javapath;C:\Program Files\Microsoft\jdk-11.0.16.8-hotspot\bin;C:\Program Files\Eclipse Adoptium\jre-8.0.342.7-hotspot\bin;C:\Program Files\Eclipse Adoptium\jre-17.0.4.8-hotspot\bin;C:\Program Files\Eclipse Adoptium\jre-11.0.16.8-hotspot\bin;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;C:\Program Files\PuTTY\;C:\Program Files\Microsoft VS Code\bin;C:\Program Files\dotnet\;C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common;C:\Users\tobia\AppData\Local\Microsoft\WindowsApps;C:\Users\tobia\AppData\Local\gitkraken\bin;."/>
     <property name="maven.conf" value="C:\Users\tobia\AppData\Local\JetBrains\IntelliJ IDEA Community Edition 2022.2\plugins\maven\lib\maven3/conf"/>
     <property name="jdk.debug" value="release"/>
     <property name="java.class.version" value="55.0"/>

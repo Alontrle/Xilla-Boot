@@ -6,10 +6,7 @@ import com.google.gson.JsonObject;
 import lombok.SneakyThrows;
 import net.xilla.boot.reflection.annotation.Ignored;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.lang.reflect.*;
 import java.util.Arrays;
 
 /**
@@ -39,7 +36,6 @@ public class ObjectProcessor {
 
         // TODO: Customize it to ignore ignored variables
         // TODO: then add support to rename stuff to make cleaner files
-
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         return gson.toJsonTree(object).getAsJsonObject();
     }
@@ -92,9 +88,12 @@ public class ObjectProcessor {
      */
     private static <T> void fillFields(JsonObject json, Class<T> clazz, T obj) throws IllegalAccessException {
         Gson gson = new Gson();
-        for(Field field : clazz.getDeclaredFields())
-            if(checkField(field))
+//        System.out.println("Filling object " + obj + " with json " + json);
+        for(Field field : clazz.getDeclaredFields()) {
+//            System.out.println("Filling field " + field);
+            if (checkField(field))
                 setField(field, obj, gson.fromJson(json.get(getStorageName(field)), field.getType()));
+        }
     }
 
     /**
