@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.annotations.Expose;
 import lombok.Getter;
 import lombok.Setter;
+import net.xilla.boot.Logger;
 import net.xilla.boot.storage.file.loader.JsonLoader;
 
 import java.io.IOException;
@@ -43,14 +44,15 @@ public class FileSection {
 
     public JsonObject getData() {
         if(data == null) {
-            if(fileLoader == null) System.out.println("File loader is null!");
+            if(fileLoader == null) Logger.error("File loader is null!");
             try {
                 FileSection loadedSection = fileLoader.loadData(this);
-                if(loadedSection.getRawData() == null) System.out.println("Loaded data is null!");
+                if(loadedSection.getRawData() == null) Logger.error("Loaded data is null!");
+//                System.out.println("Loaded raw data " + loadedSection.getRawData());
 
                 this.data = loadedSection.getRawData();
             } catch (IOException e) {
-                System.out.println("Failed to load data for file section " + key);
+                Logger.error("Failed to load data for file section " + key);
                 e.printStackTrace();
             }
         }

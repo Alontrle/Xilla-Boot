@@ -4,11 +4,12 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import net.xilla.boot.Logger;
 import net.xilla.boot.storage.file.FileLoader;
 import net.xilla.boot.storage.file.FileSection;
 
-import java.beans.JavaBean;
 import java.io.*;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -58,8 +59,13 @@ public class JsonLoader extends ConcurrentHashMap<String, FileSection> implement
             throw new FileException("Failed to open the file writer for the temporary file!", e);
         }
 
-        if(!file.delete() && file.exists()) {
-            throw new FileException("Failed to delete the original file!");
+        try {
+            if(!Files.deleteIfExists(file.toPath()) && file.exists()) {
+                throw new FileException("Failed to delete the original file!");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new FileException("Failed to delete the original file.");
         }
         if (!tempFile.renameTo(file))
             throw new FileException("Failed to rename temporary file!");
@@ -78,7 +84,7 @@ public class JsonLoader extends ConcurrentHashMap<String, FileSection> implement
     // Reading from the file
 
     public void readFile() throws IOException {
-//        System.out.println("File " + file);
+//        Logger.debug("File " + file);
         if(!file.exists()) {
             file.getParentFile().mkdirs();
             if(!file.createNewFile()) {
@@ -104,29 +110,37 @@ public class JsonLoader extends ConcurrentHashMap<String, FileSection> implement
                 tempBuffer.deleteCharAt(0);
             }
 
-            if(tempBuffer.toString().endsWith("\n},\n")) {
+//            Logger.debug("Data " + tempBuffer.toString());
+            if(tempBuffer.toString().endsWith("\n},\n") || stream.available() == 0) {
 
 //                index++;
-                String json;
+                String json = builder.toString();
 
-//                System.out.println("Buff " + builder.toString());
+//                Logger.debug("Buff " + builder.toString());
 
 //                int shift = 0;
 //                if(builder.toString().startsWith("\n"))
 //                    shift = 1;
-//                System.out.println("Shift " + shift);
+//                Logger.debug("Shift " + shift);
 
-                json = builder.substring(0, builder.length() - 2);
+                if(tempBuffer.toString().endsWith(",\n"))
+                    json = builder.substring(0, builder.length() - 2);
+                else if(tempBuffer.toString().endsWith(","))
+                    json = builder.substring(0, builder.length() - 1);
 
-//                System.out.println("LOADING JSON \n" + json);
+//                Logger.debug("LOADING JSON \n" + json);
 
                 try {
+//                    Logger.debug("Trying to read json " + json);
                     Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
 
                     FileSection section = gson.fromJson(json, FileSection.class);
                     section.setFileLoader(this);
                     section.setStart(start);
-                    section.setEnd(index - 1);
+                    if(tempBuffer.toString().endsWith(",\n"))
+                        section.setEnd(index - 1);
+                    else
+                        section.setEnd(index);
 
                     put(section);
 
@@ -138,6 +152,8 @@ public class JsonLoader extends ConcurrentHashMap<String, FileSection> implement
             }
             index++;
         }
+
+        stream.close();
     }
 
     public FileSection loadData(FileSection section) throws IOException {
@@ -159,7 +175,7 @@ public class JsonLoader extends ConcurrentHashMap<String, FileSection> implement
         }
         String json = builder.toString();
 
-//        System.out.println("Attempting to read json " + json);
+//        Logger.debug("Attempting to read json " + json);
         Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
 
         JsonObject jsonObject = null;
@@ -171,12 +187,16 @@ public class JsonLoader extends ConcurrentHashMap<String, FileSection> implement
             section.setStart(start);
             section.setEnd(end);
             section.setData(jsonObject.getAsJsonObject("data"));
-//            System.out.println("Raw data " + jsonObject);
+//            Logger.debug("Raw data " + jsonObject);
+            stream.close();
+
+//            Logger.debug("Loaded section with data " + json);
             return section;
         } catch (Exception ex) {
-            System.out.println("Failed to load object with starting position " + start);
-            System.out.println("Raw json string: " + json);
+            Logger.error("Failed to load object with starting position " + start);
+            Logger.error("Raw json string: " + json);
             ex.printStackTrace();
+            stream.close();
             return null;
         }
     }

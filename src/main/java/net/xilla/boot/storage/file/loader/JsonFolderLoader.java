@@ -3,6 +3,7 @@ package net.xilla.boot.storage.file.loader;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
+import net.xilla.boot.Logger;
 import net.xilla.boot.storage.file.FileLoader;
 import net.xilla.boot.storage.file.FileSection;
 
@@ -169,7 +170,7 @@ public class JsonFolderLoader extends ConcurrentHashMap<String, FileSection> imp
 //            System.out.println("Raw data " + jsonObject);
             return section;
         } catch (Exception ex) {
-            System.out.println("Failed to load object with starting position " + start);
+            Logger.error("Failed to load object with starting position " + start);
             ex.printStackTrace();
             return null;
         }

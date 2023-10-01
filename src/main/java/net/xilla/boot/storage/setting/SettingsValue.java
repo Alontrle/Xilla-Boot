@@ -4,11 +4,13 @@ import com.google.gson.annotations.Expose;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
+import net.xilla.boot.reflection.annotation.Ignored;
 
 @AllArgsConstructor
 public class SettingsValue<T> {
 
     @Getter
+    @Ignored
     private transient String name;
 
     @Setter

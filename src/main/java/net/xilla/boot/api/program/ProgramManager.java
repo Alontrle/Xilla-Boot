@@ -1,7 +1,10 @@
 package net.xilla.boot.api.program;
 
 import lombok.Getter;
+import net.xilla.boot.Logger;
+import net.xilla.boot.XillaApplication;
 import net.xilla.boot.reflection.ObjectProcessor;
+import net.xilla.boot.storage.file.FileLoader;
 import net.xilla.boot.storage.manager.Manager;
 
 import java.util.*;
@@ -36,17 +39,19 @@ public class ProgramManager {
 
     // Constructor, duh
 
-    public ProgramManager(String name) {
+    public ProgramManager() {
         this.controller = new ProgramController(this);
-
     };
+
+    public List<Manager> getRegisteredManagers() {
+        return new ArrayList<>(classManagerMap.values());
+    }
 
     public void registerManager(Manager manager) {
         registerManager(manager, StartupPriority.MANAGER);
     }
 
     public void registerManager(Manager manager, StartupPriority priority) {
-        System.out.println("Adding manager " + ObjectProcessor.getName(manager));
         startupSequence.add(new StartupProcess(manager.getName(), priority) {
             @Override
             public void run() {
@@ -58,6 +63,16 @@ public class ProgramManager {
 
         classManagerMap.put(manager.getClazz(), manager);
         nameManagerMap.put(manager.getName(), manager);
+    }
+
+    public <T> Manager createManager(Class<T> object, FileLoader loader) {
+        return createManager(object, loader, StartupPriority.MANAGER);
+    }
+
+    public <T> Manager createManager(Class<T> object, FileLoader loader, StartupPriority priority) {
+        Manager manager = new Manager(object, loader);
+        XillaApplication.getInstance().registerManager(manager, priority);
+        return manager;
     }
 
     public void registerStartupProcess(StartupProcess process) {
@@ -76,20 +91,21 @@ public class ProgramManager {
             items.add(ObjectProcessor.getName(q) + "(" + q.getPriority() + ")");
         });
 
-//        Logger.log(LogLevel.DEBUG, "Starting the startup items: " + String.join(", ", items), getClass());
-        System.out.println("Starting the startup items: " + String.join(", ", items));
+//        Logger.getGlobal().info("Starting the startup items: " + String.join(", ", items));
+        Logger.debug("Starting the startup items: " + String.join(", ", items));
 
         queue.forEach((q) -> {
             ExecutorService executorService = Executors.newSingleThreadExecutor();
             executorService.submit(() -> {
-                System.out.println("Running startup item " + ObjectProcessor.getName(q) + " with priority " + q.getPriority());
+//                Logger.getGlobal().info("Running startup item " + ObjectProcessor.getName(q) + " with priority " + q.getPriority());
+                Logger.debug("Running startup item " + ObjectProcessor.getName(q) + " with priority " + q.getPriority());
 //                Logger.log(LogLevel.DEBUG, "Running startup item " + q.getKey() + " with priority " + q.getPriority(), getClass());
                 q.run();
             });
             executorService.shutdown();
             try {
                 if(!executorService.awaitTermination(15, TimeUnit.SECONDS)) {
-//                    Logger.log(LogLevel.ERROR, "Startup item " + q + " froze and took longer than 15s to start! The process will continue, however the next startup step will attempt to run.", getClass());
+                    Logger.error("Startup item " + q + " froze and took longer than 15s to start! The process will continue, however the next startup step will attempt to run.");
                 }
             } catch (InterruptedException interruptedException) {
                 interruptedException.printStackTrace();

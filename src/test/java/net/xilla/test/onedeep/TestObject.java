@@ -13,6 +13,8 @@ public class TestObject {
     @Getter
     private String objectName;
 
+    private transient Object notStored = System.currentTimeMillis(); // Marked as transient, won't be stored
+
     public TestObject(String id, String objectName) {
         this.id = id;
         this.objectName = objectName;

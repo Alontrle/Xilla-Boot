@@ -12,6 +12,7 @@ net\xilla\boot\storage\setting\SettingsValue.class
 net\xilla\boot\storage\config\ConfigBuilder.class
 net\xilla\boot\storage\file\loader\JsonLoader.class
 net\xilla\boot\XillaAPI.class
+net\xilla\boot\reflection\annotation\JsonFolderManager.class
 net\xilla\boot\storage\manager\Manager.class
 net\xilla\boot\storage\file\FileLoader$FileException.class
 net\xilla\boot\reflection\annotation\JsonManager.class
@@ -24,8 +25,10 @@ net\xilla\boot\api\storage\ConfigFile.class
 net\xilla\boot\reflection\annotation\CacheManager.class
 net\xilla\boot\storage\config\ConfigStorage.class
 net\xilla\boot\reflection\annotation\Ignored.class
+net\xilla\boot\storage\file\loader\JsonFolderLoader.class
 net\xilla\boot\api\program\ProgramManager$1.class
 net\xilla\boot\XillaApplication.class
+net\xilla\boot\Logger.class
 net\xilla\boot\reflection\ObjectProcessor.class
 net\xilla\boot\storage\config\type\JsonFolder.class
 net\xilla\boot\storage\file\loader\CacheLoader.class

@@ -1,5 +1,6 @@
 package net.xilla.boot.reflection;
 
+import net.xilla.boot.Logger;
 import net.xilla.boot.api.program.ProgramManager;
 import net.xilla.boot.api.program.StartupPriority;
 import net.xilla.boot.reflection.annotation.CacheManager;
@@ -38,22 +39,24 @@ public class ClassScanner {
 
     public void load() {
 
-        System.out.println("Loading classes from " + Arrays.toString(getRoot().getDefinedPackages()));
+        Logger.debug("Loading classes from " + Arrays.toString(getRoot().getDefinedPackages()));
 
         for(var pack : getRoot().getDefinedPackages()) {
             try {
                 Set<Class> classes = findAllClassesUsingReflectionsLibrary(pack.getName());
-                System.out.println("Searched package " + pack);
-                System.out.println("Found classes " + classes);
+                Logger.debug("Searched package " + pack);
+                Logger.debug("Found " + classes.size() + " classes");
                 if (classes.size() > 0) {
-                    System.out.println("------------------------------------");
-                    System.out.println("Package: " + pack.getName());
-                    System.out.println("Data: " + classes);
-                    System.out.println("------------------------------------");
-
+                    List<Class> xillaClasses = new ArrayList<>();
                     for (var clazz : classes) {
-                        scans.forEach((scan) -> scan.scan(clazz));
+                        scans.forEach((scan) -> {
+                            if(scan.scan(clazz)) xillaClasses.add(clazz);
+                        });
                     }
+                    Logger.debug("------------------------------------");
+                    Logger.debug("Package: " + pack.getName());
+                    Logger.debug("Xilla Classes: " + xillaClasses);
+                    Logger.debug("------------------------------------");
                 }
             } catch (NoClassDefFoundError ex) {
                 ex.printStackTrace();
@@ -72,9 +75,10 @@ public class ClassScanner {
                 Manager manager = loadManager(clazz);
                 if(manager != null) {
                     programManager.registerManager(manager, getPriority(manager.getClass()));
-                    return;
+                    return true;
                 }
             }
+            return false;
         });
     }
 
@@ -85,15 +89,16 @@ public class ClassScanner {
                 JsonManager annotation = (JsonManager) annotations[0];
                 Manager manager = new Manager(clazz, new JsonLoader(annotation.fileName()));
                 programManager.registerManager(manager, getPriority(clazz));
-                return;
+                return true;
             }
             annotations = clazz.getAnnotationsByType(JsonFolderManager.class);
             if(annotations.length > 0) {
                 JsonFolderManager annotation = (JsonFolderManager) annotations[0];
                 Manager manager = new Manager(clazz, new JsonFolderLoader(annotation.folderName()));
                 programManager.registerManager(manager, getPriority(clazz));
-                return;
+                return true;
             }
+            return false;
         });
     }
 
@@ -104,8 +109,9 @@ public class ClassScanner {
                 CacheManager annotation = (CacheManager) annotations[0];
                 Manager manager = new Manager(clazz);
                 programManager.registerManager(manager, getPriority(clazz));
-                return;
+                return true;
             }
+            return false;
         });
     }
 

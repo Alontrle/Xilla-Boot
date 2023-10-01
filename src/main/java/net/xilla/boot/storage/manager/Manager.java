@@ -2,6 +2,7 @@ package net.xilla.boot.storage.manager;
 
 import lombok.Getter;
 import lombok.Setter;
+import net.xilla.boot.Logger;
 import net.xilla.boot.api.storage.ConfigFile;
 import net.xilla.boot.reflection.ObjectProcessor;
 import net.xilla.boot.reflection.ProcessorException;
@@ -69,7 +70,6 @@ public class Manager<Value> implements Map<String, Value> {
         saving = System.currentTimeMillis();
         loadToFileLoader();
         try {
-            System.out.println("Saving manager " + name);
             storage.saveSections();
         } catch (FileLoader.FileException e) {
             e.printStackTrace();
@@ -82,7 +82,12 @@ public class Manager<Value> implements Map<String, Value> {
         for(String key : loadedObjects.keySet()) {
             executor.execute(() -> {
                 Value obj = loadedObjects.get(key);
-                storage.put(key, new FileSection(key, ObjectProcessor.toJson(obj), storage));
+                try {
+                    storage.put(key, new FileSection(key, ObjectProcessor.toJson(obj, clazz), storage));
+                } catch (ProcessorException e) {
+                    Logger.error("Failed to load object " + key);
+                    throw new RuntimeException(e);
+                }
             });
         }
         executor.shutdown();
@@ -95,19 +100,16 @@ public class Manager<Value> implements Map<String, Value> {
 
     public void startWorkers() {
         if(autoSave) {
+            Logger.debug("Starting auto save for " + getName());
             new Thread(() -> {
-                boolean started = false;
                 while (autoSave) {
                     long start = System.currentTimeMillis();
-                    if(started) {
-                        System.out.println("Auto saving manager " + getName());
-                        save();
-                        started = true;
-                    }
+                    Logger.debug("Auto saving manager " + getName());
+                    save();
                     try {
                         long time = (autoSaveTime * 1000L) - (System.currentTimeMillis() - start);
                         if(time <= 0)
-                            System.out.println("Manager " + getName() + " is taking longer then the autosave period to save!");
+                            Logger.debug("Manager " + getName() + " is taking longer then the autosave period to save!");
                         else
                             Thread.sleep(time);
                     } catch (InterruptedException ignored) {
@@ -116,27 +118,24 @@ public class Manager<Value> implements Map<String, Value> {
             }).start();
         }
         if(autoCleanup) {
+            Logger.debug("Starting auto cleanup for " + getName());
             new Thread(() -> {
-                boolean started = false;
                 while (autoCleanup) {
                     // Saving before cleaning up
                     long start = System.currentTimeMillis();
-                    if(started) {
-                        System.out.println("Auto cleaning up manager " + getName());
-                        save();
+                    Logger.debug("Auto cleaning up manager " + getName());
+                    save();
 
-                        for (String key : loadedObjects.keySet()) {
-                            long time = lastAccessed.get(key);
-                            if (System.currentTimeMillis() - time > cleanupTime * 1000L) {
-                                unloadObject(key);
-                            }
+                    for (String key : loadedObjects.keySet()) {
+                        long time = lastAccessed.get(key);
+                        if (System.currentTimeMillis() - time > cleanupTime * 1000L) {
+                            unloadObject(key);
                         }
                     }
-                    started = true;
                     try {
                         long time = (autoCleanupTime * 1000L) - (System.currentTimeMillis() - start);
                         if(time <= 0)
-                            System.out.println("Manager " + getName() + " is taking longer then the cleanup period to cleanup!");
+                            Logger.debug("Manager " + getName() + " is taking longer then the cleanup period to cleanup!");
                         else
                             Thread.sleep(time);
                     } catch (InterruptedException ignored) {
@@ -193,16 +192,21 @@ public class Manager<Value> implements Map<String, Value> {
         );
     }
 
+    public void reload() {
+        loadStorage();
+        initialLoad();
+    }
+
     private Value loadObject(FileSection section) {
         try {
             return ObjectProcessor.toObject(section.getData(), clazz);
-        } catch (ProcessorException e) {
-            System.out.println("Failed to load object " + section.getKey());
+        } catch (Exception e) {
+            Logger.error("Failed to load object " + section.getKey());
             e.printStackTrace();
-            System.out.println("Reason Below");
+            Logger.error("Reason Below");
             e.getCause().printStackTrace();
-            System.out.println("JSON Below");
-            System.out.println(section.getData());
+            Logger.error("JSON Below");
+            Logger.error(section.getData().toString());
             return null;
         }
     }

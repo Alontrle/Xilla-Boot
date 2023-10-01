@@ -2,12 +2,14 @@ package net.xilla.boot.reflection;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import lombok.SneakyThrows;
+import net.xilla.boot.XillaAPI;
+import net.xilla.boot.XillaApplication;
 import net.xilla.boot.reflection.annotation.Ignored;
+import net.xilla.boot.storage.manager.Manager;
 
 import java.lang.reflect.*;
-import java.util.Arrays;
 
 /**
  * The object processor contains all the serialization methods needed for objects
@@ -16,28 +18,25 @@ import java.util.Arrays;
  */
 public class ObjectProcessor {
 
-    /**
-     *
-     * @param json
-     * @param clazz
-     * @param <T>
-     * @return
-     */
-    public static <T> T fromJson(String json, Class<T> clazz) {
-        return new Gson().fromJson(json, clazz);
-    }
+    private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
     /**
      *
      * @param object
      * @return
      */
-    public static JsonObject toJson(Object object) {
+    public static <T> JsonObject toJson(T object, Class<T> clazz) throws ProcessorException {
+        try {
+            JsonObject json = new JsonObject();
+            pullFields(json, clazz, object);
+            return json;
+        } catch (Exception exception) {
+            throw new ProcessorException("Failed to create json! Check cause.", exception);
+        }
 
-        // TODO: Customize it to ignore ignored variables
-        // TODO: then add support to rename stuff to make cleaner files
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        return gson.toJsonTree(object).getAsJsonObject();
+//        // TODO: Customize it to ignore ignored variables
+//        // TODO: then add support to rename stuff to make cleaner files
+//        return gson.toJsonTree(object).getAsJsonObject();
     }
 
     /**
@@ -87,12 +86,50 @@ public class ObjectProcessor {
      * @throws IllegalAccessException
      */
     private static <T> void fillFields(JsonObject json, Class<T> clazz, T obj) throws IllegalAccessException {
-        Gson gson = new Gson();
-//        System.out.println("Filling object " + obj + " with json " + json);
         for(Field field : clazz.getDeclaredFields()) {
-//            System.out.println("Filling field " + field);
-            if (checkField(field))
-                setField(field, obj, gson.fromJson(json.get(getStorageName(field)), field.getType()));
+            if(!isIgnored(field)) {
+                if (loadFromManager(field)) {
+//                    System.out.println("Loading field " + field + " from manager");
+                    Manager manager = XillaAPI.getManager(field.getType());
+//                    System.out.println("Got manager " + manager + " and checking for obj named " + json.get(getStorageName(field)).getAsString());
+//                    System.out.println("Manager has keys: " + manager.keySet());
+                    if(manager.containsKey(json.get(getStorageName(field)).getAsString())) {
+//                        System.out.println("Found object!");
+                        setField(field, obj, XillaAPI.getObject(clazz, json.get(getStorageName(field)).getAsString()));
+//                        System.out.println("Got data " + json.get(getStorageName(field)));
+                    } else {
+//                        System.out.println("No object found!");
+                        setField(field, obj, null);
+                    }
+//                    System.out.println("Current data: " + getField(field, obj));
+                } else {
+                    setField(field, obj, gson.fromJson(json.get(getStorageName(field)), field.getType()));
+                }
+            }
+        }
+    }
+
+
+    /**
+     * Fills the json map using reflection. Pulls data from the POJO.
+     *
+     * @param json
+     * @param clazz
+     * @param obj
+     * @param <T>
+     * @throws IllegalAccessException
+     */
+    private static <T> void pullFields(JsonObject json, Class<T> clazz, T obj) throws IllegalAccessException {
+        for(Field field : clazz.getDeclaredFields()) {
+            if(!isIgnored(field)) {
+                if (loadFromManager(field)) {
+                    String data = getName(obj);
+                    json.addProperty(getStorageName(field), data);
+                } else {
+                    JsonElement data = gson.toJsonTree(pullField(field, obj));
+                    json.add(getStorageName(field), data);
+                }
+            }
         }
     }
 
@@ -128,10 +165,53 @@ public class ObjectProcessor {
     /**
      *
      * @param field
+     * @param obj
+     * @throws IllegalAccessException
+     */
+    private static Object getField(Field field, Object obj) throws IllegalAccessException {
+        boolean accessible = true;
+        if(!field.isAccessible()) {
+            accessible = false;
+            field.setAccessible(true);
+        }
+        Object returnObj = field.get(obj);
+        if(!accessible) {
+            field.setAccessible(false);
+        }
+        return returnObj;
+    }
+
+    /**
+     *
+     * @param field
+     * @param obj
+     * @throws IllegalAccessException
+     */
+    private static Object pullField(Field field, Object obj) throws IllegalAccessException {
+        boolean accessible = true;
+        if(!field.isAccessible()) {
+            accessible = false;
+            field.setAccessible(true);
+        }
+        Object object = field.get(obj);
+        if(!accessible) {
+            field.setAccessible(false);
+        }
+        return object;
+    }
+
+    private static boolean loadFromManager(Field field) {
+        return XillaApplication.getInstance().getClassManagerMap().containsKey(field.getType());
+//        return field.isAnnotationPresent(LoadFromManager.class);
+    }
+
+    /**
+     *
+     * @param field
      * @return
      */
-    private static boolean checkField(Field field) {
-        return !field.isAnnotationPresent(Ignored.class);
+    private static boolean isIgnored(Field field) {
+        return field.isAnnotationPresent(Ignored.class);
     }
 
     /**
@@ -140,7 +220,6 @@ public class ObjectProcessor {
      * @return
      */
     public static String toJsonString(Object object) {
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
         return gson.toJson(object);
     }
 
