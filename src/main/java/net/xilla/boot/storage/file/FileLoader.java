@@ -15,6 +15,8 @@ public interface FileLoader extends Map<String, FileSection> {
 
     FileSection loadData(FileSection section) throws IOException;
 
+    void unloadData(String sectionKey);
+
     class FileException extends Exception {
 
         private Exception exception;

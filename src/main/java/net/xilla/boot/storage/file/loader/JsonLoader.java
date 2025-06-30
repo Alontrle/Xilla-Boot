@@ -33,6 +33,11 @@ public class JsonLoader extends ConcurrentHashMap<String, FileSection> implement
         this.tempFile = new File(filePath + ".temp");
     }
 
+    @Override
+    public void unloadData(String section) {
+        get(section).clearData();
+    }
+
     public void put(FileSection object) {
         super.put(object.getKey(), object);
     }
@@ -200,6 +205,5 @@ public class JsonLoader extends ConcurrentHashMap<String, FileSection> implement
             return null;
         }
     }
-
 
 }

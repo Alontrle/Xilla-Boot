@@ -36,7 +36,11 @@ public class JsonFolderLoader extends ConcurrentHashMap<String, FileSection> imp
     public void remove(String key) {
         super.remove(key);
         File file = new File(folder + "/" + key + ".json");
-        if(file.exists()) file.delete();
+        if(file.exists()) {
+            if (!file.delete()) {
+                System.out.println("Failed to delete file " + file);
+            }
+        }
     }
 
     // Writing to the file
@@ -136,6 +140,11 @@ public class JsonFolderLoader extends ConcurrentHashMap<String, FileSection> imp
 
     public FileSection loadData(FileSection section) throws IOException {
         return readSectionWithData(new File(folder + "/" + section.getKey() + ".json"), section.getStart(), section.getEnd());
+    }
+
+    @Override
+    public void unloadData(String section) {
+        get(section).clearData();
     }
 
     public FileSection readSectionWithData(File file, int start, int end) throws IOException {

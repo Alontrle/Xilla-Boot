@@ -7,6 +7,7 @@ import net.xilla.boot.reflection.annotation.CacheManager;
 import net.xilla.boot.reflection.annotation.JsonFolderManager;
 import net.xilla.boot.reflection.annotation.StartPriority;
 import net.xilla.boot.reflection.annotation.JsonManager;
+import net.xilla.boot.storage.file.loader.CacheLoader;
 import net.xilla.boot.storage.file.loader.JsonFolderLoader;
 import net.xilla.boot.storage.file.loader.JsonLoader;
 import net.xilla.boot.storage.manager.Manager;
@@ -85,7 +86,8 @@ public class ClassScanner {
     private void loadJsonManagerCheck() {
         scans.add(clazz -> {
             Annotation[] annotations = clazz.getAnnotationsByType(JsonManager.class);
-            if(annotations.length > 0) {
+            if(annotations.length > 0){
+                System.out.println("Loading json file manager! " + clazz);
                 JsonManager annotation = (JsonManager) annotations[0];
                 Manager manager = new Manager(clazz, new JsonLoader(annotation.fileName()));
                 programManager.registerManager(manager, getPriority(clazz));
@@ -93,6 +95,7 @@ public class ClassScanner {
             }
             annotations = clazz.getAnnotationsByType(JsonFolderManager.class);
             if(annotations.length > 0) {
+                System.out.println("Loading json folder manager! " + clazz);
                 JsonFolderManager annotation = (JsonFolderManager) annotations[0];
                 Manager manager = new Manager(clazz, new JsonFolderLoader(annotation.folderName()));
                 programManager.registerManager(manager, getPriority(clazz));
@@ -106,6 +109,7 @@ public class ClassScanner {
         scans.add(clazz -> {
             Annotation[] annotations = clazz.getAnnotationsByType(CacheManager.class);
             if(annotations.length > 0) {
+                System.out.println("Loading cache manager! " + clazz);
                 CacheManager annotation = (CacheManager) annotations[0];
                 Manager manager = new Manager(clazz);
                 programManager.registerManager(manager, getPriority(clazz));

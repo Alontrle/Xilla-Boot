@@ -18,6 +18,7 @@ public class XillaAPI {
         if(manager == null) {throwNullManagerError(clazz.getName()); return null;}
         return manager.get(key);
     }
+
     public static <T> T getObject(String managerName, String key) {
         Manager<T> manager = getManager(managerName);
         if(manager == null) {throwNullManagerError(managerName); return null;}
@@ -64,6 +65,7 @@ public class XillaAPI {
         SettingsFile settingsFile = new SettingsFile(fileName);
         XillaApplication.getInstance().registerManager(settingsFile);
     }
+
     private static void throwNullManagerError(String name) {
         throw new RuntimeException("Manager " + name + " does not exist or is not registered!");
     }

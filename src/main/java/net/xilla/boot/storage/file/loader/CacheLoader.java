@@ -34,4 +34,9 @@ public class CacheLoader extends ConcurrentHashMap<String, FileSection> implemen
         return null;
     }
 
+    @Override
+    public void unloadData(String section) {
+        remove(section);
+    }
+
 }

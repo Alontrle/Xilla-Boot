@@ -1,2 +1,2 @@
-net\xilla\test\onedeep\TestObject.class
-net\xilla\test\TestApplication.class
+net/xilla/test/TestApplication.class
+net/xilla/test/onedeep/TestObject.class

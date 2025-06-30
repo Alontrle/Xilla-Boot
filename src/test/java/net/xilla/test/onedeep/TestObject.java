@@ -1,6 +1,7 @@
 package net.xilla.test.onedeep;
 
 import lombok.Getter;
+import net.xilla.boot.reflection.annotation.Ignored;
 import net.xilla.boot.reflection.annotation.JsonFolderManager;
 import net.xilla.boot.reflection.annotation.JsonManager;
 
@@ -13,7 +14,8 @@ public class TestObject {
     @Getter
     private String objectName;
 
-    private transient Object notStored = System.currentTimeMillis(); // Marked as transient, won't be stored
+    @Ignored
+    private Object notStored = System.currentTimeMillis(); 
 
     public TestObject(String id, String objectName) {
         this.id = id;

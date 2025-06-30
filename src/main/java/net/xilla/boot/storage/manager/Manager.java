@@ -214,7 +214,7 @@ public class Manager<Value> implements Map<String, Value> {
     public void unloadObject(String key) {
         loadedObjects.remove(key);
         lastAccessed.remove(key);
-        storage.get(key).clearData();
+        storage.unloadData(key);
     }
 
     // Map Functions
@@ -262,7 +262,7 @@ public class Manager<Value> implements Map<String, Value> {
 
     @Override
     public Value remove(Object key) {
-        storage.remove(key);
+        storage.remove(key.toString());
         lastAccessed.remove(key);
         return loadedObjects.remove(key);
     }
@@ -310,6 +310,16 @@ public class Manager<Value> implements Map<String, Value> {
             return getUniqueID();
         }
         return id;
+    }
+
+    /***
+     * Do not use unless you know exactly what you are doing.
+     *
+     * @return FileLoader
+     */
+    @Deprecated
+    protected FileLoader getFileLoader() {
+        return storage;
     }
 
 }

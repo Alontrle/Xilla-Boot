@@ -9,17 +9,24 @@ import net.xilla.boot.reflection.ClassScanner;
 public class XillaApplication extends ProgramManager {
 
     public static void start() {
-        start(true);
+        if(getInstance() == null) {
+            initialize();
+        }
+        XillaApplication.getInstance().startup();
     }
 
-    public static void start(boolean reflection) {
+    public static void initialize() {
+        initialize(true);
+    }
+
+    public static void initialize(boolean reflection) {
         XillaApplication xillaApplication = new XillaApplication();
         if(reflection)
             xillaApplication.loadClassScanner();
     }
 
     @Getter
-    private static XillaApplication instance;
+    private static XillaApplication instance = null;
 
     public XillaApplication() {
         super();

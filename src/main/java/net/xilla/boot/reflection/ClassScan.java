@@ -1,7 +1,7 @@
 package net.xilla.boot.reflection;
 
-public interface ClassScan <T> {
+public interface ClassScan {
 
-    boolean scan(Class<T> clazz);
+    boolean scan(Class clazz);
 
 }

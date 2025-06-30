@@ -4,12 +4,14 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.reflect.TypeToken;
 import net.xilla.boot.XillaAPI;
 import net.xilla.boot.XillaApplication;
 import net.xilla.boot.reflection.annotation.Ignored;
 import net.xilla.boot.storage.manager.Manager;
 
 import java.lang.reflect.*;
+import java.util.List;
 
 /**
  * The object processor contains all the serialization methods needed for objects
@@ -29,9 +31,10 @@ public class ObjectProcessor {
         try {
             JsonObject json = new JsonObject();
             pullFields(json, clazz, object);
+
             return json;
         } catch (Exception exception) {
-            throw new ProcessorException("Failed to create json! Check cause.", exception);
+            throw new ProcessorException("(" + clazz.getName() + ") Failed to create json for OBJ (" + getName(object) + ")! Check cause.", exception);
         }
 
 //        // TODO: Customize it to ignore ignored variables
@@ -54,7 +57,7 @@ public class ObjectProcessor {
             fillFields(json, clazz, obj);
             return obj;
         } catch (Exception exception) {
-            throw new ProcessorException("Failed to create object! Check cause.", exception);
+            throw new ProcessorException("(" + clazz.getName() + ") Failed to create object for JSON (" + json + ")! Check cause.", exception);
         }
     }
 
@@ -75,7 +78,6 @@ public class ObjectProcessor {
         }
         throw new Exception("No matching constructors!");
     }
-
     /**
      * Fills the variables of an object using reflection. Pulls data from JSON.
      *
@@ -86,29 +88,28 @@ public class ObjectProcessor {
      * @throws IllegalAccessException
      */
     private static <T> void fillFields(JsonObject json, Class<T> clazz, T obj) throws IllegalAccessException {
-        for(Field field : clazz.getDeclaredFields()) {
-            if(!isIgnored(field)) {
+        for (Field field : clazz.getDeclaredFields()) {
+            if (!isIgnored(field)) {
+                field.setAccessible(true);
                 if (loadFromManager(field)) {
-//                    System.out.println("Loading field " + field + " from manager");
-                    Manager manager = XillaAPI.getManager(field.getType());
-//                    System.out.println("Got manager " + manager + " and checking for obj named " + json.get(getStorageName(field)).getAsString());
-//                    System.out.println("Manager has keys: " + manager.keySet());
-                    if(manager.containsKey(json.get(getStorageName(field)).getAsString())) {
-//                        System.out.println("Found object!");
-                        setField(field, obj, XillaAPI.getObject(clazz, json.get(getStorageName(field)).getAsString()));
-//                        System.out.println("Got data " + json.get(getStorageName(field)));
+                    Manager<?> manager = XillaAPI.getManager(field.getType());
+                    if (manager.containsKey(json.get(getStorageName(field)).getAsString())) {
+                        setField(field, obj, XillaAPI.getObject(field.getType(), json.get(getStorageName(field)).getAsString()));
                     } else {
-//                        System.out.println("No object found!");
                         setField(field, obj, null);
                     }
-//                    System.out.println("Current data: " + getField(field, obj));
+                } else if (List.class.isAssignableFrom(field.getType())) {
+                    // Handle lists explicitly
+                    ParameterizedType listType = (ParameterizedType) field.getGenericType();
+                    Class<?> listGenericType = (Class<?>) listType.getActualTypeArguments()[0];
+                    List<?> list = gson.fromJson(json.get(getStorageName(field)), TypeToken.getParameterized(List.class, listGenericType).getType());
+                    setField(field, obj, list);
                 } else {
                     setField(field, obj, gson.fromJson(json.get(getStorageName(field)), field.getType()));
                 }
             }
         }
     }
-
 
     /**
      * Fills the json map using reflection. Pulls data from the POJO.
@@ -119,16 +120,31 @@ public class ObjectProcessor {
      * @param <T>
      * @throws IllegalAccessException
      */
-    private static <T> void pullFields(JsonObject json, Class<T> clazz, T obj) throws IllegalAccessException {
-        for(Field field : clazz.getDeclaredFields()) {
-            if(!isIgnored(field)) {
-                if (loadFromManager(field)) {
-                    String data = getName(obj);
-                    json.addProperty(getStorageName(field), data);
-                } else {
-                    JsonElement data = gson.toJsonTree(pullField(field, obj));
-                    json.add(getStorageName(field), data);
+    private static <T> void pullFields(JsonObject json, Class<T> clazz, T obj) {
+        for (Field field : clazz.getDeclaredFields()) {
+            try {
+                if (!isIgnored(field)) {
+                    field.setAccessible(true);
+                    if (loadFromManager(field)) {
+                        String data = getName(obj);
+                        json.addProperty(getStorageName(field), data);
+                    } else {
+                        Object fieldValue = pullField(field, obj);
+                        if (fieldValue instanceof List<?>) {
+                            // Handle lists explicitly
+                            ParameterizedType listType = (ParameterizedType) field.getGenericType();
+                            Class<?> listGenericType = (Class<?>) listType.getActualTypeArguments()[0];
+                            JsonElement data = gson.toJsonTree(fieldValue, TypeToken.getParameterized(List.class, listGenericType).getType());
+                            json.add(getStorageName(field), data);
+                        } else {
+                            JsonElement data = gson.toJsonTree(fieldValue);
+                            json.add(getStorageName(field), data);
+                        }
+                    }
                 }
+            } catch (Exception exception) {
+                System.out.println("Failed to load FIELD " + field + " for OBJ " + obj);
+                exception.printStackTrace();
             }
         }
     }
@@ -162,24 +178,6 @@ public class ObjectProcessor {
         }
     }
 
-    /**
-     *
-     * @param field
-     * @param obj
-     * @throws IllegalAccessException
-     */
-    private static Object getField(Field field, Object obj) throws IllegalAccessException {
-        boolean accessible = true;
-        if(!field.isAccessible()) {
-            accessible = false;
-            field.setAccessible(true);
-        }
-        Object returnObj = field.get(obj);
-        if(!accessible) {
-            field.setAccessible(false);
-        }
-        return returnObj;
-    }
 
     /**
      *
@@ -239,12 +237,6 @@ public class ObjectProcessor {
                 if(response != null) return response;
             }
 
-            method = getMethod(object, "getName");
-            if(method != null) {
-                response = method.invoke(object).toString();
-                if(response != null) return response;
-            }
-
             method = getMethod(object, "getID");
             if(method != null) {
                 response = method.invoke(object).toString();
@@ -252,6 +244,12 @@ public class ObjectProcessor {
             }
 
             method = getMethod(object, "getId");
+            if(method != null) {
+                response = method.invoke(object).toString();
+                if(response != null) return response;
+            }
+
+            method = getMethod(object, "getName");
             if(method != null) {
                 response = method.invoke(object).toString();
                 if(response != null) return response;
