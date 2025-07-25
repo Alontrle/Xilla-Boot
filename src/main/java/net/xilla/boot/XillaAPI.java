@@ -1,5 +1,6 @@
 package net.xilla.boot;
 
+import net.xilla.boot.reflection.ObjectProcessor;
 import net.xilla.boot.storage.manager.Manager;
 import net.xilla.boot.storage.setting.SettingsFile;
 
@@ -30,11 +31,28 @@ public class XillaAPI {
         if(manager == null) {throwNullManagerError(clazz.getName()); return null;}
         return manager.put(obj);
     }
-
     public static <T> T setObject(String managerName, T obj) {
         Manager<T> manager = getManager(managerName);
         if(manager == null) {throwNullManagerError(managerName); return null;}
         return manager.put(obj);
+    }
+
+    public static <T> T removeObject(Class<T> clazz, T obj) {
+        Manager<T> manager = getManager(clazz);
+        if(manager == null) {throwNullManagerError(clazz.getName()); return null;}
+
+        String id = ObjectProcessor.getName(obj);
+
+        return manager.remove(id);
+    }
+
+    public static <T> T removeObject(String managerName, T obj) {
+        Manager<T> manager = getManager(managerName);
+        if(manager == null) {throwNullManagerError(managerName); return null;}
+
+        String id = ObjectProcessor.getName(obj);
+
+        return manager.remove(id);
     }
 
     public static <T> T getSetting(String settingsName, String key) {
