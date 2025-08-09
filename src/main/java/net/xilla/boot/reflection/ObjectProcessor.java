@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
+import net.xilla.boot.Logger;
 import net.xilla.boot.XillaAPI;
 import net.xilla.boot.XillaApplication;
 import net.xilla.boot.reflection.annotation.Ignored;
@@ -87,26 +88,33 @@ public class ObjectProcessor {
      * @param <T>
      * @throws IllegalAccessException
      */
-    private static <T> void fillFields(JsonObject json, Class<T> clazz, T obj) throws IllegalAccessException {
+    private static <T> void fillFields(JsonObject json, Class<T> clazz, T obj) throws Exception {
         for (Field field : clazz.getDeclaredFields()) {
-            if (!isIgnored(field)) {
-                field.setAccessible(true);
-                if (loadFromManager(field)) {
-                    Manager<?> manager = XillaAPI.getManager(field.getType());
-                    if (manager.containsKey(json.get(getStorageName(field)).getAsString())) {
-                        setField(field, obj, XillaAPI.getObject(field.getType(), json.get(getStorageName(field)).getAsString()));
+            try {
+                if (!isIgnored(field)) {
+                    field.setAccessible(true);
+                    if (loadFromManager(field)) {
+                        Manager<?> manager = XillaAPI.getManager(field.getType());
+                        if (manager.containsKey(json.get(getStorageName(field)).getAsString())) {
+                            setField(field, obj, XillaAPI.getObject(field.getType(), json.get(getStorageName(field)).getAsString()));
+                        } else {
+                            setField(field, obj, null);
+                        }
+                    } else if (List.class.isAssignableFrom(field.getType())) {
+                        // Handle lists explicitly
+                        ParameterizedType listType = (ParameterizedType) field.getGenericType();
+                        Class<?> listGenericType = (Class<?>) listType.getActualTypeArguments()[0];
+                        List<?> list = gson.fromJson(json.get(getStorageName(field)), TypeToken.getParameterized(List.class, listGenericType).getType());
+                        setField(field, obj, list);
                     } else {
-                        setField(field, obj, null);
+                        setField(field, obj, gson.fromJson(json.get(getStorageName(field)), field.getType()));
                     }
-                } else if (List.class.isAssignableFrom(field.getType())) {
-                    // Handle lists explicitly
-                    ParameterizedType listType = (ParameterizedType) field.getGenericType();
-                    Class<?> listGenericType = (Class<?>) listType.getActualTypeArguments()[0];
-                    List<?> list = gson.fromJson(json.get(getStorageName(field)), TypeToken.getParameterized(List.class, listGenericType).getType());
-                    setField(field, obj, list);
-                } else {
-                    setField(field, obj, gson.fromJson(json.get(getStorageName(field)), field.getType()));
                 }
+            } catch (Exception ex) {
+                Logger.error("Failed to load field " + field);
+                ex.printStackTrace();
+
+                throw new Exception("Failed to load field " + field);
             }
         }
     }
